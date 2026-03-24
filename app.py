@@ -39,13 +39,40 @@ def prices():
 
 @app.route('/api/gex/<ticker>')
 def gex(ticker):
-    """Proxy FlashAlpha GEX endpoint"""
-    from datetime import date
-    today = date.today().isoformat()
+    """Proxy FlashAlpha GEX endpoint - tries summary first, falls back to gex endpoint"""
     try:
-        url = f'https://lab.flashalpha.com/v1/exposure/gex/{ticker.upper()}?expiration={today}'
+        # Try the stock summary endpoint which includes key levels
+        url = f'https://lab.flashalpha.com/v1/stock/{ticker.lower()}/summary'
         r = requests.get(url, timeout=10, headers={'X-Api-Key': FLASHALPHA_KEY})
-        return jsonify(r.json()), r.status_code
+        if r.status_code == 200:
+            data = r.json()
+            # Extract key levels from summary
+            exposure = data.get('exposure', {})
+            key_levels = exposure.get('key_levels', {})
+            result = {
+                'gamma_flip': key_levels.get('gamma_flip') or exposure.get('gamma_flip'),
+                'call_wall':  key_levels.get('call_wall')  or exposure.get('call_wall'),
+                'put_wall':   key_levels.get('put_wall')   or exposure.get('put_wall'),
+                'net_gex':    exposure.get('net_gex'),
+                'regime':     exposure.get('regime'),
+                '_raw':       data  # for debugging
+            }
+            return jsonify(result), 200
+
+        # Fallback: direct GEX endpoint
+        url2 = f'https://lab.flashalpha.com/v1/exposure/gex/{ticker.upper()}'
+        r2 = requests.get(url2, timeout=10, headers={'X-Api-Key': FLASHALPHA_KEY})
+        data2 = r2.json()
+        # Derive call_wall and put_wall from strikes if not top-level
+        if 'call_wall' not in data2 and 'strikes' in data2:
+            strikes = data2['strikes']
+            if strikes:
+                call_wall = max(strikes, key=lambda s: s.get('call_gex', 0) or 0).get('strike')
+                put_wall  = min(strikes, key=lambda s: s.get('put_gex', 0) or 0).get('strike')
+                data2['call_wall'] = call_wall
+                data2['put_wall']  = put_wall
+        return jsonify(data2), r2.status_code
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
