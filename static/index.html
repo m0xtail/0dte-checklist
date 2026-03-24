@@ -1119,89 +1119,70 @@ function checkTradDay() {
   }
 }
 
-// ── Live Prices (Yahoo Finance via allorigins proxy) ──
+// ── Live Prices (via Flask proxy) ──
 async function loadPrices() {
-  const tickers = ['SPY','QQQ','%5EVIX'];
-  const results = await Promise.allSettled(tickers.map(t =>
-    fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2d`)
-      .then(r => r.json())
-  ));
+  try {
+    const res = await fetch('/api/prices');
+    const data = await res.json();
 
-  const parse = (res, id, chgId) => {
-    if (res.status !== 'fulfilled') return;
-    try {
-      const q = res.value.chart.result[0];
-      const price = q.meta.regularMarketPrice;
-      const prev  = q.meta.chartPreviousClose;
-      const chg   = price - prev;
-      const pct   = (chg / prev) * 100;
-      const el    = document.getElementById(id);
-      const ce    = document.getElementById(chgId);
-      if (el) el.textContent = price.toFixed(2);
+    const apply = (d, priceId, chgId, stateKey) => {
+      if (!d || d.error) return null;
+      const el = document.getElementById(priceId);
+      const ce = document.getElementById(chgId);
+      if (el) el.textContent = d.price.toFixed(2);
       if (ce) {
-        ce.textContent = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)} (${pct.toFixed(2)}%)`;
-        ce.className   = `change ${chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat'}`;
+        ce.textContent = `${d.change >= 0 ? '+' : ''}${d.change.toFixed(2)} (${d.pct.toFixed(2)}%)`;
+        ce.className   = `change ${d.change > 0 ? 'up' : d.change < 0 ? 'down' : 'flat'}`;
       }
-      return { price, prev, chg, pct };
-    } catch(e) {}
-  };
+      if (stateKey) state[stateKey].price = d.price;
+      return d;
+    };
 
-  const spyData = parse(results[0], 'spyPrice', 'spyChange');
-  const qqqData = parse(results[1], 'qqqPrice', 'qqqChange');
-  const vixData = parse(results[2], 'vixPrice', 'vixChange');
+    apply(data['SPY'],  'spyPrice', 'spyChange', 'spy');
+    apply(data['QQQ'],  'qqqPrice', 'qqqChange', 'qqq');
+    const vixData = apply(data['^VIX'], 'vixPrice', 'vixChange', null);
 
-  if (spyData) state.spy.price = spyData.price;
-  if (qqqData) state.qqq.price = qqqData.price;
-  if (vixData) {
-    state.vix = vixData.price;
-    const sub = document.getElementById('vixCheckSub');
-    if (sub) sub.textContent = `Current VIX: ${vixData.price.toFixed(2)}${vixData.price > 35 ? ' ⚠️ ABOVE 35' : ''}`;
-    if (vixData.price > 35) {
-      const vixCheck = document.querySelector('[data-reason="VIX > 35"]');
-      if (vixCheck && !vixCheck.classList.contains('checked')) {
-        vixCheck.classList.add('checked');
-        addNoTradeReason('VIX > 35');
+    if (vixData) {
+      state.vix = vixData.price;
+      const sub = document.getElementById('vixCheckSub');
+      if (sub) sub.textContent = `Current VIX: ${vixData.price.toFixed(2)}${vixData.price > 35 ? ' ⚠️ ABOVE 35' : ''}`;
+      if (vixData.price > 35) {
+        const vixCheck = document.querySelector('[data-reason="VIX > 35"]');
+        if (vixCheck && !vixCheck.classList.contains('checked')) {
+          vixCheck.classList.add('checked');
+          addNoTradeReason('VIX > 35');
+        }
       }
     }
+  } catch(e) {
+    console.error('Price load failed:', e);
   }
-
   updateRegimes();
   updateMasterBadge();
 }
 
-// ── GEX via FlashAlpha ──────────────────────────────
+// ── GEX via Flask proxy ─────────────────────────────
 async function loadGEX() {
-  if (CONFIG.FLASHALPHA_KEY === 'YOUR_FLASHALPHA_KEY') {
-    document.getElementById('gexSetupNotice').style.display = 'block';
-    return;
-  }
-
-  const today = new Date().toISOString().split('T')[0];
-  const headers = { 'X-Api-Key': CONFIG.FLASHALPHA_KEY };
-
-  const [spyRes, qqqRes] = await Promise.allSettled([
-    fetch(`https://lab.flashalpha.com/v1/exposure/gex/SPY?expiration=${today}`, { headers }).then(r => r.json()),
-    fetch(`https://lab.flashalpha.com/v1/exposure/gex/QQQ?expiration=${today}`, { headers }).then(r => r.json()),
-  ]);
-
-  const apply = (res, ticker) => {
-    if (res.status !== 'fulfilled') return;
-    const d = res.value;
-    const hvl      = d.gamma_flip   ?? d.hvl   ?? null;
-    const callWall = d.call_wall    ?? null;
-    const putWall  = d.put_wall     ?? null;
-
-    document.getElementById(`${ticker}-hvl`).textContent  = hvl      ? `$${hvl.toFixed(2)}`      : '—';
-    document.getElementById(`${ticker}-call`).textContent = callWall ? `$${callWall.toFixed(2)}`  : '—';
-    document.getElementById(`${ticker}-put`).textContent  = putWall  ? `$${putWall.toFixed(2)}`   : '—';
-
-    state[ticker].hvl      = hvl;
-    state[ticker].callWall = callWall;
-    state[ticker].putWall  = putWall;
+  const applyGEX = async (ticker) => {
+    try {
+      const res = await fetch(`/api/gex/${ticker}`);
+      const d   = await res.json();
+      if (d.error) { console.warn(`GEX ${ticker}:`, d.error); return; }
+      const t        = ticker.toLowerCase();
+      const hvl      = d.gamma_flip ?? d.hvl ?? null;
+      const callWall = d.call_wall  ?? d.call_gamma_wall ?? null;
+      const putWall  = d.put_wall   ?? d.put_gamma_wall  ?? null;
+      document.getElementById(`${t}-hvl`).textContent  = hvl      ? `$${Number(hvl).toFixed(2)}`      : '—';
+      document.getElementById(`${t}-call`).textContent = callWall ? `$${Number(callWall).toFixed(2)}`  : '—';
+      document.getElementById(`${t}-put`).textContent  = putWall  ? `$${Number(putWall).toFixed(2)}`   : '—';
+      state[t].hvl      = hvl;
+      state[t].callWall = callWall;
+      state[t].putWall  = putWall;
+    } catch(e) {
+      console.error(`GEX load failed for ${ticker}:`, e);
+    }
   };
-
-  apply(spyRes, 'spy');
-  apply(qqqRes, 'qqq');
+  await Promise.all([applyGEX('SPY'), applyGEX('QQQ')]);
   updateRegimes();
 }
 
