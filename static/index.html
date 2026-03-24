@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>0DTE Checklist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #242424;
+    --text: #e8e8e8;
+    --dim: #666;
+    --green: #00d084;
+    --red: #ff3b3b;
+    --yellow: #f5c842;
+    --blue: #4da6ff;
+    --orange: #ff8c42;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .header h1 {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .header .date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--dim);
+    margin-top: 3px;
+  }
+  .trade-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .trade-badge.go    { background: rgba(0,208,132,0.15); color: var(--green); border: 1px solid rgba(0,208,132,0.3); }
+  .trade-badge.no    { background: rgba(255,59,59,0.15);  color: var(--red);   border: 1px solid rgba(255,59,59,0.3); }
+  .trade-badge.wait  { background: rgba(245,200,66,0.15); color: var(--yellow);border: 1px solid rgba(245,200,66,0.3); }
+  .trade-badge.check { background: rgba(77,166,255,0.12); color: var(--blue);  border: 1px solid rgba(77,166,255,0.25); }
+
+  /* LIVE STRIP */
+  .live-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .live-cell {
+    background: var(--surface);
+    padding: 10px 14px;
+    text-align: center;
+  }
+  .live-cell .label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .live-cell .value {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .live-cell .change {
+    font-family: var(--mono);
+    font-size: 10px;
+    margin-top: 2px;
+  }
+  .up   { color: var(--green); }
+  .down { color: var(--red); }
+  .flat { color: var(--dim); }
+
+  /* NAV TABS */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 1;
+    min-width: 70px;
+    padding: 11px 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dim);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab.active { color: var(--text); border-bottom-color: var(--green); }
+
+  /* PANELS */
+  .panel { display: none; padding: 0 0 20px; }
+  .panel.active { display: block; }
+
+  /* SECTION */
+  .section {
+    margin: 12px 16px 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .section-header {
+    padding: 10px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .section-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .section-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--yellow);
+  }
+
+  /* GEX LEVELS */
+  .gex-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+  .gex-cell {
+    background: var(--surface);
+    padding: 12px 14px;
+  }
+  .gex-cell .ticker {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .level-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .level-row:last-child { border-bottom: none; }
+  .level-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+  }
+  .level-value {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .hvl-value  { color: var(--yellow); }
+  .call-value { color: var(--green); }
+  .put-value  { color: var(--red); }
+
+  /* REGIME BADGE */
+  .regime-bar {
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .regime-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .regime-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .regime-pos  { background: rgba(255,59,59,0.12);  color: var(--red);    border: 1px solid rgba(255,59,59,0.25); }
+  .regime-mod  { background: rgba(0,208,132,0.12);  color: var(--green);  border: 1px solid rgba(0,208,132,0.25); }
+  .regime-ext  { background: rgba(255,140,66,0.12); color: var(--orange); border: 1px solid rgba(255,140,66,0.25); }
+  .regime-unk  { background: rgba(100,100,100,0.12);color: var(--dim);    border: 1px solid rgba(100,100,100,0.25); }
+
+  /* DIST FROM HVL */
+  .dist-row {
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+  }
+  .dist-label { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+  .dist-value { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+
+  /* EXPECTED MOVE */
+  .em-block {
+    padding: 14px;
+  }
+  .em-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .em-row:last-child { border-bottom: none; }
+  .em-label { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .em-value { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+  .em-note  { font-size: 10px; color: var(--dim); font-family: var(--mono); }
+
+  /* INPUT FIELDS */
+  .input-block { padding: 12px 14px; }
+  .input-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .input-row:last-child { margin-bottom: 0; }
+  .input-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--dim);
+    flex: 1;
+  }
+  .num-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 6px 10px;
+    width: 100px;
+    text-align: right;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .num-input:focus { border-color: var(--blue); }
+
+  /* VIX */
+  .vix-block { padding: 14px; }
+  .vix-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .vix-number {
+    font-family: var(--mono);
+    font-size: 32px;
+    font-weight: 600;
+  }
+  .vix-signal {
+    text-align: right;
+  }
+  .vix-signal .sig-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .vix-futures-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .futures-btn {
+    padding: 10px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .futures-btn.selected-rising  { background: rgba(255,59,59,0.15);  color: var(--red);   border-color: rgba(255,59,59,0.4); }
+  .futures-btn.selected-falling { background: rgba(0,208,132,0.15);  color: var(--green); border-color: rgba(0,208,132,0.4); }
+  .futures-btn.selected-flat    { background: rgba(245,200,66,0.12); color: var(--yellow);border-color: rgba(245,200,66,0.3); }
+
+  /* CHECKLIST */
+  .check-list { padding: 4px 0; }
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .check-item:last-child { border-bottom: none; }
+  .check-item:active { background: var(--surface2); }
+  .check-box {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .check-item.checked .check-box {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .check-item.checked .check-box::after {
+    content: '';
+    width: 5px;
+    height: 9px;
+    border: 2px solid #000;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+  }
+  .check-text {
+    flex: 1;
+  }
+  .check-main {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .check-item.checked .check-main {
+    color: var(--dim);
+    text-decoration: line-through;
+  }
+  .check-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 3px;
+  }
+
+  /* DECISION CARD */
+  .decision-card {
+    margin: 12px 16px 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .decision-header {
+    padding: 12px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .decision-body { background: var(--surface); }
+  .decision-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .decision-row:last-child { border-bottom: none; }
+  .decision-key { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .decision-val { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+
+  /* SELECT BUTTONS */
+  .select-group {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .sel-btn {
+    padding: 4px 10px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .sel-btn.active-green  { background: rgba(0,208,132,0.15);  color: var(--green);  border-color: rgba(0,208,132,0.4); }
+  .sel-btn.active-red    { background: rgba(255,59,59,0.15);  color: var(--red);    border-color: rgba(255,59,59,0.4); }
+  .sel-btn.active-yellow { background: rgba(245,200,66,0.12); color: var(--yellow); border-color: rgba(245,200,66,0.3); }
+  .sel-btn.active-blue   { background: rgba(77,166,255,0.12); color: var(--blue);   border-color: rgba(77,166,255,0.3); }
+
+  /* LOG PANEL */
+  .log-entry {
+    margin: 12px 16px 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .log-date {
+    padding: 8px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--dim);
+    display: flex;
+    justify-content: space-between;
+  }
+  .log-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .log-row:last-child { border-bottom: none; }
+  .log-key  { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+  .log-val  { font-family: var(--mono); font-size: 11px; font-weight: 500; }
+  .pnl-pos  { color: var(--green); }
+  .pnl-neg  { color: var(--red); }
+  .pnl-zero { color: var(--dim); }
+
+  /* SAVE BUTTON */
+  .save-btn {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 14px 16px 0;
+    padding: 14px;
+    background: var(--green);
+    color: #000;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .save-btn:active { opacity: 0.8; }
+  .save-btn:disabled { background: var(--border); color: var(--dim); cursor: not-allowed; }
+
+  /* NO TRADE BANNER */
+  .no-trade-banner {
+    margin: 12px 16px 0;
+    padding: 14px;
+    background: rgba(255,59,59,0.08);
+    border: 1px solid rgba(255,59,59,0.25);
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    line-height: 1.6;
+  }
+  .no-trade-banner .nt-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* REFRESH BTN */
+  .refresh-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .refresh-btn:active { color: var(--text); }
+
+  /* SPINNER */
+  .spin {
+    display: inline-block;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* NOTES */
+  .notes-area {
+    background: var(--bg);
+    border: none;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 12px 14px;
+    resize: none;
+    width: 100%;
+    outline: none;
+    min-height: 80px;
+  }
+
+  /* SETUP NOTICE */
+  .setup-notice {
+    margin: 12px 16px 0;
+    padding: 12px 14px;
+    background: rgba(77,166,255,0.06);
+    border: 1px solid rgba(77,166,255,0.2);
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--blue);
+    line-height: 1.7;
+  }
+  .setup-notice strong { color: var(--text); }
+
+  .dim-text { color: var(--dim); font-size: 12px; font-family: var(--mono); }
+
+  .loading-val { color: var(--dim); font-family: var(--mono); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════ CONFIG ══ -->
+<script>
+  const CONFIG = {
+    FLASHALPHA_KEY: 'G5DwBnT1ZbByenm7jLCWzpFe3ngHOOPsHmI4mjjw',
+    SUPABASE_URL:   'https://xtkxknusrjvjfqneefof.supabase.co',
+    SUPABASE_ANON:  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0a3hrbnVzcmp2amZxbmVlZm9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2OTAxNjEsImV4cCI6MjA4OTI2NjE2MX0.vhHjP-HEZH6jQTprNGND6evHBFZaoqCBWquwfdIKQwY',
+    TRADE_DAYS: [1, 3, 5], // Mon=1, Wed=3, Fri=5
+  };
+</script>
+
+<!-- ═══════════════════════════════════════ HTML ═══ -->
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1>0DTE // ORB</h1>
+      <div class="date" id="headerDate">—</div>
+    </div>
+    <div class="trade-badge check" id="masterBadge">LOADING</div>
+  </div>
+</div>
+
+<div class="live-strip">
+  <div class="live-cell">
+    <div class="label">SPY</div>
+    <div class="value" id="spyPrice">—</div>
+    <div class="change" id="spyChange">—</div>
+  </div>
+  <div class="live-cell">
+    <div class="label">QQQ</div>
+    <div class="value" id="qqqPrice">—</div>
+    <div class="change" id="qqqChange">—</div>
+  </div>
+  <div class="live-cell">
+    <div class="label">VIX</div>
+    <div class="value" id="vixPrice">—</div>
+    <div class="change" id="vixChange">—</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('gex')">GEX</button>
+  <button class="tab" onclick="showTab('em')">Exp Move</button>
+  <button class="tab" onclick="showTab('checks')">Checklist</button>
+  <button class="tab" onclick="showTab('decision')">Decision</button>
+  <button class="tab" onclick="showTab('log')">Log</button>
+</div>
+
+<!-- ══════════════ TAB: GEX ══════════════ -->
+<div class="panel active" id="tab-gex">
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Gamma Levels</span>
+      <button class="refresh-btn" onclick="loadGEX()">↻ Refresh</button>
+    </div>
+    <div class="gex-grid">
+      <div class="gex-cell">
+        <div class="ticker">SPY</div>
+        <div class="level-row">
+          <span class="level-label">HVL</span>
+          <span class="level-value hvl-value" id="spy-hvl">—</span>
+        </div>
+        <div class="level-row">
+          <span class="level-label">Call Wall</span>
+          <span class="level-value call-value" id="spy-call">—</span>
+        </div>
+        <div class="level-row">
+          <span class="level-label">Put Wall</span>
+          <span class="level-value put-value" id="spy-put">—</span>
+        </div>
+      </div>
+      <div class="gex-cell">
+        <div class="ticker">QQQ</div>
+        <div class="level-row">
+          <span class="level-label">HVL</span>
+          <span class="level-value hvl-value" id="qqq-hvl">—</span>
+        </div>
+        <div class="level-row">
+          <span class="level-label">Call Wall</span>
+          <span class="level-value call-value" id="qqq-call">—</span>
+        </div>
+        <div class="level-row">
+          <span class="level-label">Put Wall</span>
+          <span class="level-value put-value" id="qqq-put">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPY regime -->
+    <div class="dist-row">
+      <span class="dist-label">SPY dist from HVL</span>
+      <span class="dist-value" id="spy-dist">—</span>
+    </div>
+    <div class="regime-bar">
+      <span class="regime-label">SPY Regime</span>
+      <span class="regime-tag regime-unk" id="spy-regime">—</span>
+    </div>
+
+    <!-- QQQ regime -->
+    <div class="dist-row">
+      <span class="dist-label">QQQ dist from HVL</span>
+      <span class="dist-value" id="qqq-dist">—</span>
+    </div>
+    <div class="regime-bar">
+      <span class="regime-label">QQQ Regime</span>
+      <span class="regime-tag regime-unk" id="qqq-regime">—</span>
+    </div>
+  </div>
+
+  <div id="gexSetupNotice" class="setup-notice" style="display:none">
+    <strong>API key not set.</strong><br>
+    Add your FlashAlpha key to CONFIG.FLASHALPHA_KEY in index.html.<br>
+    Sign up free at flashalpha.com — no credit card needed.
+  </div>
+
+</div>
+
+<!-- ══════════════ TAB: EXPECTED MOVE ══════════════ -->
+<div class="panel" id="tab-em">
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Expected Move</span>
+      <span class="section-time">9:10 AM</span>
+    </div>
+    <div class="input-block">
+      <div class="input-row">
+        <span class="input-label">ATM Straddle Price ($)</span>
+        <input type="number" class="num-input" id="straddleInput" placeholder="0.00" step="0.01" oninput="calcEM()">
+      </div>
+    </div>
+    <div class="em-block">
+      <div class="em-row">
+        <span class="em-label">Expected Move (×0.68)</span>
+        <span class="em-value" id="emResult">—</span>
+      </div>
+      <div class="em-row">
+        <span class="em-label">66% Threshold (max OR)</span>
+        <span class="em-value" id="emThresh">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:12px">
+    <div class="section-header">
+      <span class="section-title">Opening Range Check</span>
+      <span class="section-time">9:45 AM</span>
+    </div>
+    <div class="input-block">
+      <div class="input-row">
+        <span class="input-label">OR High</span>
+        <input type="number" class="num-input" id="orHigh" placeholder="0.00" step="0.01" oninput="calcOR()">
+      </div>
+      <div class="input-row">
+        <span class="input-label">OR Low</span>
+        <input type="number" class="num-input" id="orLow" placeholder="0.00" step="0.01" oninput="calcOR()">
+      </div>
+    </div>
+    <div class="em-block">
+      <div class="em-row">
+        <span class="em-label">OR Width</span>
+        <span class="em-value" id="orWidth">—</span>
+      </div>
+      <div class="em-row">
+        <span class="em-label">OR as % of EM</span>
+        <span class="em-value" id="orPct">—</span>
+      </div>
+      <div class="em-row">
+        <span class="em-label">Room to Trade</span>
+        <span class="em-value" id="orRoom">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:12px">
+    <div class="section-header">
+      <span class="section-title">IV Skew</span>
+      <span class="section-time">9:20 AM</span>
+    </div>
+    <div class="input-block">
+      <div class="input-row">
+        <span class="input-label">ATM Call IV (%)</span>
+        <input type="number" class="num-input" id="callIV" placeholder="0.0" step="0.1" oninput="calcSkew()">
+      </div>
+      <div class="input-row">
+        <span class="input-label">ATM Put IV (%)</span>
+        <input type="number" class="num-input" id="putIV" placeholder="0.0" step="0.1" oninput="calcSkew()">
+      </div>
+    </div>
+    <div class="em-block">
+      <div class="em-row">
+        <span class="em-label">IV Skew</span>
+        <span class="em-value" id="skewResult">—</span>
+      </div>
+      <div class="em-row">
+        <span class="em-label">Lean</span>
+        <span class="em-value" id="skewLean">—</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════ TAB: CHECKLIST ══════════════ -->
+<div class="panel" id="tab-checks">
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Pre-Market</span>
+      <span class="section-time">9:00 – 9:28 AM</span>
+    </div>
+    <div class="check-list" id="preChecklist">
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">Economic calendar reviewed</div>
+          <div class="check-sub">investing.com/economic-calendar</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">GEX / HVL levels recorded</div>
+          <div class="check-sub">Modigin.com or TanukiTrade</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">Straddle price entered → EM calculated</div>
+          <div class="check-sub">Exp Move tab</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">Index selected (SPY or QQQ)</div>
+          <div class="check-sub">GEX regime → relative strength tiebreaker</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">IV skew checked</div>
+          <div class="check-sub">&gt;15% diff = directional lean</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">Final decision written before 9:30</div>
+          <div class="check-sub">Trade / No trade / Reduced — Decision tab</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:12px">
+    <div class="section-header">
+      <span class="section-title">Opening Range + Entry</span>
+      <span class="section-time">9:30 – 10:30 AM</span>
+    </div>
+    <div class="check-list">
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">OR high + low marked (9:45)</div>
+          <div class="check-sub">Enter levels in Exp Move tab</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">VIX futures direction observed (9:30–9:45)</div>
+          <div class="check-sub">Select lean in GEX tab → VIX section</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">OR &lt; 66% of expected move</div>
+          <div class="check-sub">Confirm in Exp Move tab</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">Full 5-min candle closed outside range</div>
+          <div class="check-sub">No trade if no clean break by 10:30</div>
+        </div>
+      </div>
+      <div class="check-item" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">Confirmation filters (≥2 of 3)</div>
+          <div class="check-sub">Volume / Pre-mkt alignment / GEX wall direction</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:12px">
+    <div class="section-header">
+      <span class="section-title">No-Trade Conditions</span>
+    </div>
+    <div class="check-list" id="noTradeChecks">
+      <div class="check-item no-trade-check" data-reason="FOMC day" onclick="toggleNoTrade(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">FOMC decision day</div>
+        </div>
+      </div>
+      <div class="check-item no-trade-check" data-reason="VIX > 35" onclick="toggleNoTrade(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">VIX above 35</div>
+          <div class="check-sub" id="vixCheckSub">Current VIX: loading…</div>
+        </div>
+      </div>
+      <div class="check-item no-trade-check" data-reason="Positive GEX" onclick="toggleNoTrade(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">Positive GEX, no HVL breach</div>
+        </div>
+      </div>
+      <div class="check-item no-trade-check" data-reason="No breakout by 10:30" onclick="toggleNoTrade(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">No clean breakout by 10:30 AM</div>
+        </div>
+      </div>
+      <div class="check-item no-trade-check" data-reason="OR > 66% of EM" onclick="toggleNoTrade(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">Opening range &gt;66% of expected move</div>
+        </div>
+      </div>
+      <div class="check-item no-trade-check" data-reason="Extreme negative GEX" onclick="toggleNoTrade(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">3 of 4 extreme negative GEX criteria met</div>
+        </div>
+      </div>
+      <div class="check-item no-trade-check" data-reason="Bid-ask > $0.10" onclick="toggleNoTrade(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">ATM 0DTE bid-ask &gt;$0.10 on SPY</div>
+        </div>
+      </div>
+      <div class="check-item no-trade-check" data-reason="Tuesday or Thursday" onclick="toggleNoTrade(this)">
+        <div class="check-box"></div>
+        <div class="check-text">
+          <div class="check-main">Tuesday or Thursday</div>
+          <div class="check-sub" id="dayCheckSub">Today: loading…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════ TAB: DECISION ══════════════ -->
+<div class="panel" id="tab-decision">
+
+  <div id="noTradeBanner" class="no-trade-banner" style="display:none">
+    <div class="nt-title">⛔ No Trade</div>
+    <div id="noTradeReason">—</div>
+  </div>
+
+  <div class="decision-card">
+    <div class="decision-header">Final Pre-Open Decision</div>
+    <div class="decision-body">
+      <div class="decision-row">
+        <span class="decision-key">Trade Today</span>
+        <div class="select-group">
+          <button class="sel-btn" id="td-yes"  onclick="setDecision('trade','YES')">YES</button>
+          <button class="sel-btn" id="td-no"   onclick="setDecision('trade','NO')">NO</button>
+          <button class="sel-btn" id="td-red"  onclick="setDecision('trade','REDUCED')">REDUCED</button>
+        </div>
+      </div>
+      <div class="decision-row">
+        <span class="decision-key">Index</span>
+        <div class="select-group">
+          <button class="sel-btn" id="idx-spy" onclick="setDecision('index','SPY')">SPY</button>
+          <button class="sel-btn" id="idx-qqq" onclick="setDecision('index','QQQ')">QQQ</button>
+        </div>
+      </div>
+      <div class="decision-row">
+        <span class="decision-key">GEX Zone</span>
+        <div class="select-group">
+          <button class="sel-btn" id="gz-pos" onclick="setDecision('gexzone','POS')">+GEX</button>
+          <button class="sel-btn" id="gz-mod" onclick="setDecision('gexzone','MOD-NEG')">Mod−</button>
+          <button class="sel-btn" id="gz-ext" onclick="setDecision('gexzone','EXT-NEG')">Ext−</button>
+        </div>
+      </div>
+      <div class="decision-row">
+        <span class="decision-key">Size</span>
+        <div class="select-group">
+          <button class="sel-btn" id="sz-full" onclick="setDecision('size','FULL')">Full $125</button>
+          <button class="sel-btn" id="sz-half" onclick="setDecision('size','50%')">50% $62</button>
+          <button class="sel-btn" id="sz-25"   onclick="setDecision('size','25%')">25% $31</button>
+        </div>
+      </div>
+      <div class="decision-row">
+        <span class="decision-key">Direction</span>
+        <div class="select-group">
+          <button class="sel-btn" id="dir-call" onclick="setDecision('direction','CALL')">CALL</button>
+          <button class="sel-btn" id="dir-put"  onclick="setDecision('direction','PUT')">PUT</button>
+          <button class="sel-btn" id="dir-none" onclick="setDecision('direction','NONE')">—</button>
+        </div>
+      </div>
+      <div class="decision-row">
+        <span class="decision-key">Conf. Filters</span>
+        <div class="select-group">
+          <button class="sel-btn" id="cf-0" onclick="setDecision('filters','0')">0</button>
+          <button class="sel-btn" id="cf-1" onclick="setDecision('filters','1')">1</button>
+          <button class="sel-btn" id="cf-2" onclick="setDecision('filters','2')">2</button>
+          <button class="sel-btn" id="cf-3" onclick="setDecision('filters','3')">3</button>
+        </div>
+      </div>
+      <div class="decision-row">
+        <span class="decision-key">VIX Futures</span>
+        <div class="vix-futures-btns" style="max-width:200px">
+          <button class="futures-btn" id="vf-rising"  onclick="setVixFutures('rising')">↑ Rising</button>
+          <button class="futures-btn" id="vf-falling" onclick="setVixFutures('falling')">↓ Falling</button>
+          <button class="futures-btn" id="vf-flat"    onclick="setVixFutures('flat')">— Flat</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:12px">
+    <div class="section-header">
+      <span class="section-title">Trade Notes</span>
+    </div>
+    <textarea class="notes-area" id="tradeNotes" placeholder="Entry time, spreads, observations…" rows="4"></textarea>
+  </div>
+
+  <div class="section" style="margin-top:12px">
+    <div class="section-header">
+      <span class="section-title">P&amp;L</span>
+    </div>
+    <div class="input-block">
+      <div class="input-row">
+        <span class="input-label">Entry Price ($)</span>
+        <input type="number" class="num-input" id="entryPrice" placeholder="0.00" step="0.01">
+      </div>
+      <div class="input-row">
+        <span class="input-label">Exit Price ($)</span>
+        <input type="number" class="num-input" id="exitPrice" placeholder="0.00" step="0.01" oninput="calcPnL()">
+      </div>
+      <div class="input-row">
+        <span class="input-label">Contracts</span>
+        <input type="number" class="num-input" id="contracts" placeholder="1" step="1" value="1" oninput="calcPnL()">
+      </div>
+    </div>
+    <div class="em-block">
+      <div class="em-row">
+        <span class="em-label">P&amp;L ($)</span>
+        <span class="em-value" id="pnlDollar">—</span>
+      </div>
+      <div class="em-row">
+        <span class="em-label">P&amp;L (%)</span>
+        <span class="em-value" id="pnlPct">—</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="save-btn" onclick="saveLog()">Save to Trade Log</button>
+
+</div>
+
+<!-- ══════════════ TAB: LOG ══════════════ -->
+<div class="panel" id="tab-log">
+  <div class="setup-notice" id="logSetupNotice" style="display:none">
+    <strong>Supabase not configured.</strong><br>
+    Add SUPABASE_URL and SUPABASE_ANON to CONFIG in index.html.<br>
+    Then run the SQL in your Supabase project to create the trades table.
+  </div>
+  <div id="logEntries">
+    <div style="padding:30px 16px; text-align:center; font-family:var(--mono); font-size:11px; color:var(--dim);">
+      Loading trade log…
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ JS ════ -->
+<script>
+// ── State ──────────────────────────────────────────
+const state = {
+  spy: { price:0, hvl:0, callWall:0, putWall:0 },
+  qqq: { price:0, hvl:0, callWall:0, putWall:0 },
+  vix: 0,
+  em: 0,
+  noTradeReasons: [],
+  decisions: {},
+  vixFutures: null,
+  logs: [],
+};
+
+// ── Init ───────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  setHeaderDate();
+  checkTradDay();
+  loadPrices();
+  loadGEX();
+  loadLog();
+  setInterval(loadPrices, 60000); // refresh prices every 60s
+});
+
+function setHeaderDate() {
+  const d = new Date();
+  const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  document.getElementById('headerDate').textContent =
+    `${days[d.getDay()]} ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  const daySub = document.getElementById('dayCheckSub');
+  if (daySub) daySub.textContent = `Today: ${days[d.getDay()]}`;
+}
+
+function checkTradDay() {
+  const dow = new Date().getDay();
+  if (!CONFIG.TRADE_DAYS.includes(dow)) {
+    document.getElementById('masterBadge').textContent = 'OFF DAY';
+    document.getElementById('masterBadge').className = 'trade-badge no';
+    // auto-check the Tue/Thu no-trade condition
+    const tueCheck = document.querySelector('[data-reason="Tuesday or Thursday"]');
+    if (tueCheck) tueCheck.classList.add('checked');
+    addNoTradeReason('Tuesday or Thursday');
+  }
+}
+
+// ── Live Prices (Yahoo Finance via allorigins proxy) ──
+async function loadPrices() {
+  const tickers = ['SPY','QQQ','%5EVIX'];
+  const results = await Promise.allSettled(tickers.map(t =>
+    fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2d`)
+      .then(r => r.json())
+  ));
+
+  const parse = (res, id, chgId) => {
+    if (res.status !== 'fulfilled') return;
+    try {
+      const q = res.value.chart.result[0];
+      const price = q.meta.regularMarketPrice;
+      const prev  = q.meta.chartPreviousClose;
+      const chg   = price - prev;
+      const pct   = (chg / prev) * 100;
+      const el    = document.getElementById(id);
+      const ce    = document.getElementById(chgId);
+      if (el) el.textContent = price.toFixed(2);
+      if (ce) {
+        ce.textContent = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)} (${pct.toFixed(2)}%)`;
+        ce.className   = `change ${chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat'}`;
+      }
+      return { price, prev, chg, pct };
+    } catch(e) {}
+  };
+
+  const spyData = parse(results[0], 'spyPrice', 'spyChange');
+  const qqqData = parse(results[1], 'qqqPrice', 'qqqChange');
+  const vixData = parse(results[2], 'vixPrice', 'vixChange');
+
+  if (spyData) state.spy.price = spyData.price;
+  if (qqqData) state.qqq.price = qqqData.price;
+  if (vixData) {
+    state.vix = vixData.price;
+    const sub = document.getElementById('vixCheckSub');
+    if (sub) sub.textContent = `Current VIX: ${vixData.price.toFixed(2)}${vixData.price > 35 ? ' ⚠️ ABOVE 35' : ''}`;
+    if (vixData.price > 35) {
+      const vixCheck = document.querySelector('[data-reason="VIX > 35"]');
+      if (vixCheck && !vixCheck.classList.contains('checked')) {
+        vixCheck.classList.add('checked');
+        addNoTradeReason('VIX > 35');
+      }
+    }
+  }
+
+  updateRegimes();
+  updateMasterBadge();
+}
+
+// ── GEX via FlashAlpha ──────────────────────────────
+async function loadGEX() {
+  if (CONFIG.FLASHALPHA_KEY === 'YOUR_FLASHALPHA_KEY') {
+    document.getElementById('gexSetupNotice').style.display = 'block';
+    return;
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  const headers = { 'X-Api-Key': CONFIG.FLASHALPHA_KEY };
+
+  const [spyRes, qqqRes] = await Promise.allSettled([
+    fetch(`https://lab.flashalpha.com/v1/exposure/gex/SPY?expiration=${today}`, { headers }).then(r => r.json()),
+    fetch(`https://lab.flashalpha.com/v1/exposure/gex/QQQ?expiration=${today}`, { headers }).then(r => r.json()),
+  ]);
+
+  const apply = (res, ticker) => {
+    if (res.status !== 'fulfilled') return;
+    const d = res.value;
+    const hvl      = d.gamma_flip   ?? d.hvl   ?? null;
+    const callWall = d.call_wall    ?? null;
+    const putWall  = d.put_wall     ?? null;
+
+    document.getElementById(`${ticker}-hvl`).textContent  = hvl      ? `$${hvl.toFixed(2)}`      : '—';
+    document.getElementById(`${ticker}-call`).textContent = callWall ? `$${callWall.toFixed(2)}`  : '—';
+    document.getElementById(`${ticker}-put`).textContent  = putWall  ? `$${putWall.toFixed(2)}`   : '—';
+
+    state[ticker].hvl      = hvl;
+    state[ticker].callWall = callWall;
+    state[ticker].putWall  = putWall;
+  };
+
+  apply(spyRes, 'spy');
+  apply(qqqRes, 'qqq');
+  updateRegimes();
+}
+
+// ── Regime Classification ───────────────────────────
+function classifyRegime(price, hvl) {
+  if (!price || !hvl) return null;
+  const dist = ((price - hvl) / price) * 100; // positive = above HVL
+  if (dist > 0)    return 'POS';
+  if (dist >= -1.5) return 'MOD-NEG';
+  return 'EXT-NEG';
+}
+
+function updateRegimes() {
+  ['spy','qqq'].forEach(t => {
+    const price = state[t].price;
+    const hvl   = state[t].hvl;
+    if (!price || !hvl) return;
+
+    const dist    = ((price - hvl) / price) * 100;
+    const regime  = classifyRegime(price, hvl);
+    const distEl  = document.getElementById(`${t}-dist`);
+    const regEl   = document.getElementById(`${t}-regime`);
+
+    if (distEl) {
+      distEl.textContent = `${dist >= 0 ? '+' : ''}${dist.toFixed(2)}%`;
+      distEl.className   = `dist-value ${dist > 0 ? 'up' : 'down'}`;
+    }
+
+    if (regEl) {
+      const map = {
+        'POS':     ['regime-pos', 'POSITIVE'],
+        'MOD-NEG': ['regime-mod', 'MOD NEG'],
+        'EXT-NEG': ['regime-ext', 'EXT NEG'],
+      };
+      const [cls, label] = map[regime] || ['regime-unk', '—'];
+      regEl.className   = `regime-tag ${cls}`;
+      regEl.textContent = label;
+    }
+
+    state[t].regime = regime;
+  });
+}
+
+function updateMasterBadge() {
+  const badge = document.getElementById('masterBadge');
+  if (state.noTradeReasons.length > 0) {
+    badge.textContent = 'NO TRADE';
+    badge.className   = 'trade-badge no';
+  } else if (!CONFIG.FLASHALPHA_KEY || CONFIG.FLASHALPHA_KEY === 'YOUR_FLASHALPHA_KEY') {
+    badge.textContent = 'SETUP NEEDED';
+    badge.className   = 'trade-badge check';
+  } else {
+    badge.textContent = 'CHECK OK';
+    badge.className   = 'trade-badge wait';
+  }
+}
+
+// ── Expected Move ───────────────────────────────────
+function calcEM() {
+  const straddle = parseFloat(document.getElementById('straddleInput').value);
+  if (isNaN(straddle) || straddle <= 0) {
+    document.getElementById('emResult').textContent = '—';
+    document.getElementById('emThresh').textContent = '—';
+    state.em = 0;
+    return;
+  }
+  const em     = straddle * 0.68;
+  const thresh = em * 0.66;
+  state.em = em;
+  document.getElementById('emResult').textContent = `$${em.toFixed(2)}`;
+  document.getElementById('emThresh').textContent = `$${thresh.toFixed(2)}`;
+  calcOR();
+}
+
+function calcOR() {
+  const hi  = parseFloat(document.getElementById('orHigh').value);
+  const lo  = parseFloat(document.getElementById('orLow').value);
+  const em  = state.em;
+
+  if (isNaN(hi) || isNaN(lo) || hi <= lo) {
+    document.getElementById('orWidth').textContent = '—';
+    document.getElementById('orPct').textContent   = '—';
+    document.getElementById('orRoom').textContent  = '—';
+    return;
+  }
+
+  const width = hi - lo;
+  const pct   = em > 0 ? (width / em) * 100 : 0;
+  const room  = pct < 66;
+
+  document.getElementById('orWidth').textContent = `$${width.toFixed(2)}`;
+  document.getElementById('orPct').textContent   = `${pct.toFixed(1)}%`;
+  const roomEl = document.getElementById('orRoom');
+  roomEl.textContent  = room ? '✓ OK to trade' : '✗ OR too wide';
+  roomEl.style.color  = room ? 'var(--green)' : 'var(--red)';
+
+  if (!room) addNoTradeReason('OR > 66% of EM');
+  else removeNoTradeReason('OR > 66% of EM');
+}
+
+function calcSkew() {
+  const call = parseFloat(document.getElementById('callIV').value);
+  const put  = parseFloat(document.getElementById('putIV').value);
+  if (isNaN(call) || isNaN(put)) return;
+  const diff = Math.abs(put - call);
+  document.getElementById('skewResult').textContent = `${diff.toFixed(1)}%`;
+  const lean = diff > 15
+    ? (put > call ? 'Lean PUTS (put IV elevated)' : 'Lean CALLS (call IV elevated)')
+    : 'No directional lean (<15%)';
+  const leanEl = document.getElementById('skewLean');
+  leanEl.textContent = lean;
+  leanEl.style.color = diff > 15 ? 'var(--yellow)' : 'var(--dim)';
+}
+
+function calcPnL() {
+  const entry     = parseFloat(document.getElementById('entryPrice').value);
+  const exit      = parseFloat(document.getElementById('exitPrice').value);
+  const contracts = parseInt(document.getElementById('contracts').value) || 1;
+  if (isNaN(entry) || isNaN(exit)) return;
+  const pnlPer = (exit - entry) * 100 * contracts;
+  const pnlPct = ((exit - entry) / entry) * 100;
+  const dolEl  = document.getElementById('pnlDollar');
+  const pctEl  = document.getElementById('pnlPct');
+  dolEl.textContent = `${pnlPer >= 0 ? '+' : ''}$${pnlPer.toFixed(2)}`;
+  pctEl.textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%`;
+  dolEl.style.color = pnlPer >= 0 ? 'var(--green)' : 'var(--red)';
+  pctEl.style.color = pnlPct >= 0 ? 'var(--green)' : 'var(--red)';
+}
+
+// ── Checklist ───────────────────────────────────────
+function toggleCheck(el) {
+  el.classList.toggle('checked');
+}
+
+// ── No-Trade Conditions ─────────────────────────────
+function toggleNoTrade(el) {
+  const reason = el.dataset.reason;
+  el.classList.toggle('checked');
+  if (el.classList.contains('checked')) addNoTradeReason(reason);
+  else removeNoTradeReason(reason);
+}
+
+function addNoTradeReason(reason) {
+  if (!state.noTradeReasons.includes(reason)) {
+    state.noTradeReasons.push(reason);
+    updateNoTradeBanner();
+  }
+}
+
+function removeNoTradeReason(reason) {
+  state.noTradeReasons = state.noTradeReasons.filter(r => r !== reason);
+  updateNoTradeBanner();
+}
+
+function updateNoTradeBanner() {
+  const banner = document.getElementById('noTradeBanner');
+  const reason = document.getElementById('noTradeReason');
+  if (state.noTradeReasons.length > 0) {
+    banner.style.display = 'block';
+    reason.textContent   = state.noTradeReasons.join(' · ');
+  } else {
+    banner.style.display = 'none';
+  }
+  updateMasterBadge();
+}
+
+// ── Decision Buttons ────────────────────────────────
+const BTN_COLORS = {
+  trade:     { YES:'active-green', NO:'active-red', REDUCED:'active-yellow' },
+  index:     { SPY:'active-blue', QQQ:'active-blue' },
+  gexzone:   { POS:'active-red', 'MOD-NEG':'active-green', 'EXT-NEG':'active-yellow' },
+  size:      { FULL:'active-green', '50%':'active-yellow', '25%':'active-yellow' },
+  direction: { CALL:'active-green', PUT:'active-red', NONE:'active-blue' },
+  filters:   { '0':'active-red','1':'active-yellow','2':'active-green','3':'active-green' },
+};
+
+const BTN_IDS = {
+  trade:     { YES:'td-yes', NO:'td-no', REDUCED:'td-red' },
+  index:     { SPY:'idx-spy', QQQ:'idx-qqq' },
+  gexzone:   { POS:'gz-pos', 'MOD-NEG':'gz-mod', 'EXT-NEG':'gz-ext' },
+  size:      { FULL:'sz-full', '50%':'sz-half', '25%':'sz-25' },
+  direction: { CALL:'dir-call', PUT:'dir-put', NONE:'dir-none' },
+  filters:   { '0':'cf-0','1':'cf-1','2':'cf-2','3':'cf-3' },
+};
+
+function setDecision(key, val) {
+  state.decisions[key] = val;
+  const group = BTN_IDS[key];
+  Object.entries(group).forEach(([v, id]) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.className = 'sel-btn';
+    if (v === val) btn.classList.add(BTN_COLORS[key][val] || 'active-blue');
+  });
+}
+
+function setVixFutures(val) {
+  state.vixFutures = val;
+  ['rising','falling','flat'].forEach(v => {
+    const btn = document.getElementById(`vf-${v}`);
+    btn.className = 'futures-btn' + (v === val ? ` selected-${v}` : '');
+  });
+}
+
+// ── Tab Navigation ──────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ── Supabase: Save Log ──────────────────────────────
+async function saveLog() {
+  if (CONFIG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+    document.getElementById('logSetupNotice').style.display = 'block';
+    showTab('log');
+    return;
+  }
+
+  const d = state.decisions;
+  const entry = parseFloat(document.getElementById('entryPrice').value) || null;
+  const exit  = parseFloat(document.getElementById('exitPrice').value)  || null;
+  const contracts = parseInt(document.getElementById('contracts').value) || 1;
+  const pnl = (entry && exit) ? (exit - entry) * 100 * contracts : null;
+
+  const row = {
+    trade_date:       new Date().toISOString().split('T')[0],
+    day_of_week:      ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()],
+    index_traded:     d.index    || null,
+    gex_zone:         d.gexzone  || null,
+    trade_decision:   d.trade    || null,
+    size:             d.size     || null,
+    direction:        d.direction|| null,
+    filters_met:      d.filters  || null,
+    vix_futures:      state.vixFutures,
+    spy_hvl:          state.spy.hvl,
+    qqq_hvl:          state.qqq.hvl,
+    vix_open:         state.vix  || null,
+    expected_move:    state.em   || null,
+    no_trade_reasons: state.noTradeReasons.join(', ') || null,
+    entry_price:      entry,
+    exit_price:       exit,
+    contracts,
+    pnl_dollars:      pnl,
+    notes:            document.getElementById('tradeNotes').value || null,
+  };
+
+  const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/trades_0dte`, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'apikey':        CONFIG.SUPABASE_ANON,
+      'Authorization': `Bearer ${CONFIG.SUPABASE_ANON}`,
+      'Prefer':        'return=minimal',
+    },
+    body: JSON.stringify(row),
+  });
+
+  if (res.ok) {
+    const btn = document.querySelector('.save-btn');
+    btn.textContent = '✓ Saved';
+    setTimeout(() => btn.textContent = 'Save to Trade Log', 2000);
+    loadLog();
+    showTab('log');
+  } else {
+    alert('Save failed — check Supabase config.');
+  }
+}
+
+// ── Supabase: Load Log ──────────────────────────────
+async function loadLog() {
+  if (CONFIG.SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+    document.getElementById('logSetupNotice').style.display = 'block';
+    document.getElementById('logEntries').innerHTML = '';
+    return;
+  }
+
+  const res = await fetch(
+    `${CONFIG.SUPABASE_URL}/rest/v1/trades_0dte?order=trade_date.desc&limit=20`,
+    { headers: { 'apikey': CONFIG.SUPABASE_ANON, 'Authorization': `Bearer ${CONFIG.SUPABASE_ANON}` } }
+  );
+
+  if (!res.ok) { document.getElementById('logEntries').innerHTML = '<div style="padding:20px 16px;font-family:var(--mono);font-size:11px;color:var(--dim)">Could not load log.</div>'; return; }
+
+  const rows = await res.json();
+  const container = document.getElementById('logEntries');
+
+  if (!rows.length) {
+    container.innerHTML = '<div style="padding:30px 16px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dim)">No trades logged yet.</div>';
+    return;
+  }
+
+  container.innerHTML = rows.map(r => {
+    const pnlCls = r.pnl_dollars > 0 ? 'pnl-pos' : r.pnl_dollars < 0 ? 'pnl-neg' : 'pnl-zero';
+    const pnlStr = r.pnl_dollars != null ? `${r.pnl_dollars >= 0 ? '+' : ''}$${Number(r.pnl_dollars).toFixed(2)}` : '—';
+    return `
+    <div class="log-entry">
+      <div class="log-date">
+        <span>${r.trade_date} ${r.day_of_week || ''}</span>
+        <span class="${pnlCls}">${pnlStr}</span>
+      </div>
+      <div class="log-row"><span class="log-key">Index</span><span class="log-val">${r.index_traded || '—'}</span></div>
+      <div class="log-row"><span class="log-key">Direction</span><span class="log-val">${r.direction || '—'}</span></div>
+      <div class="log-row"><span class="log-key">GEX Zone</span><span class="log-val">${r.gex_zone || '—'}</span></div>
+      <div class="log-row"><span class="log-key">Size</span><span class="log-val">${r.size || '—'}</span></div>
+      <div class="log-row"><span class="log-key">Filters</span><span class="log-val">${r.filters_met !== null ? r.filters_met + '/3' : '—'}</span></div>
+      <div class="log-row"><span class="log-key">Entry / Exit</span><span class="log-val">${r.entry_price ? '$'+r.entry_price : '—'} → ${r.exit_price ? '$'+r.exit_price : '—'}</span></div>
+      ${r.no_trade_reasons ? `<div class="log-row"><span class="log-key">No-Trade</span><span class="log-val" style="color:var(--red);font-size:10px">${r.no_trade_reasons}</span></div>` : ''}
+      ${r.notes ? `<div class="log-row"><span class="log-key">Notes</span><span class="log-val" style="font-size:10px;color:var(--dim)">${r.notes}</span></div>` : ''}
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
