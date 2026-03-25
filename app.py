@@ -38,10 +38,19 @@ def prices():
             results[ticker.replace('%5E', '^')] = {'error': str(e)}
     return jsonify(results)
 
+def next_weekdays(n=5):
+    """Return the next n weekday dates as ISO strings starting from today"""
+    days = []
+    d = date.today()
+    while len(days) < n:
+        if d.weekday() < 5:  # Mon-Fri
+            days.append(d.isoformat())
+        d += timedelta(days=1)
+    return days
+
 @app.route('/api/gex/<ticker>')
 def gex(ticker):
     ticker = ticker.upper()
-    today  = date.today().isoformat()
 
     # Get underlying price
     underlying = None
@@ -49,27 +58,43 @@ def gex(ticker):
         pr = requests.get(
             f'https://api.massive.com/v2/last/trade/{ticker}',
             params={'apiKey': MASSIVE_KEY}, timeout=10)
-        pd = pr.json()
-        underlying = pd.get('results', {}).get('p') or pd.get('last', {}).get('price')
+        pd_data = pr.json()
+        underlying = (pd_data.get('results', {}) or {}).get('p') or \
+                     (pd_data.get('last', {}) or {}).get('price')
     except:
         pass
 
-    # Fetch 0DTE options chain
+    # Try today and next 4 weekdays to find nearest expiration with contracts
     contracts = []
-    for exp in [today, (date.today() + timedelta(days=1)).isoformat()]:
+    used_exp  = None
+    for exp in next_weekdays(5):
         try:
             cr = requests.get(
                 f'https://api.massive.com/v3/snapshot/options/{ticker}',
                 params={'expiration_date': exp, 'limit': 250, 'apiKey': MASSIVE_KEY},
                 timeout=15)
-            contracts = cr.json().get('results', [])
-            if contracts:
+            results = cr.json().get('results', [])
+            if results:
+                contracts = results
+                used_exp  = exp
                 break
         except:
-            pass
+            continue
 
     if not contracts:
-        return jsonify({'error': 'No contracts found'}), 404
+        # Last resort: fetch without expiration filter to get any available contracts
+        try:
+            cr = requests.get(
+                f'https://api.massive.com/v3/snapshot/options/{ticker}',
+                params={'limit': 250, 'apiKey': MASSIVE_KEY},
+                timeout=15)
+            contracts = cr.json().get('results', [])
+            used_exp  = 'nearest'
+        except Exception as e:
+            return jsonify({'error': f'No contracts found: {str(e)}'}), 404
+
+    if not contracts:
+        return jsonify({'error': 'No options contracts available'}), 404
 
     # Compute GEX per strike
     strike_gex = defaultdict(float)
@@ -80,9 +105,9 @@ def gex(ticker):
         greeks  = c.get('greeks', {})
         strike  = details.get('strike_price')
         gamma   = greeks.get('gamma')
-        oi      = c.get('open_interest') or c.get('day', {}).get('open_interest')
+        oi      = c.get('open_interest') or (c.get('day') or {}).get('open_interest')
         ctype   = details.get('contract_type', '').lower()
-        if not all([strike, gamma is not None, oi]):
+        if strike is None or gamma is None or not oi:
             continue
         gex_val = gamma * oi * 100 * (price_ref ** 2) * 0.01
         if ctype == 'call':
@@ -91,7 +116,7 @@ def gex(ticker):
             strike_gex[strike] -= gex_val
 
     if not strike_gex:
-        return jsonify({'error': 'No valid greeks in chain'}), 500
+        return jsonify({'error': 'No valid greeks in chain — market may be closed'}), 500
 
     sorted_strikes = sorted(strike_gex.keys())
 
@@ -99,7 +124,7 @@ def gex(ticker):
     call_wall = max(sorted_strikes, key=lambda s: strike_gex[s])
     put_wall  = min(sorted_strikes, key=lambda s: strike_gex[s])
 
-    # Gamma flip: cumulative GEX zero crossing
+    # Gamma flip: strike where cumulative GEX is closest to zero crossing
     cumulative = 0
     gamma_flip = None
     best_dist  = float('inf')
@@ -112,14 +137,15 @@ def gex(ticker):
     net_gex = sum(strike_gex.values())
 
     return jsonify({
-        'ticker':     ticker,
-        'gamma_flip': gamma_flip,
-        'call_wall':  call_wall,
-        'put_wall':   put_wall,
-        'net_gex':    net_gex,
-        'regime':     'positive' if net_gex > 0 else 'negative',
-        'underlying': underlying,
-        'contracts':  len(contracts)
+        'ticker':      ticker,
+        'expiration':  used_exp,
+        'gamma_flip':  gamma_flip,
+        'call_wall':   call_wall,
+        'put_wall':    put_wall,
+        'net_gex':     net_gex,
+        'regime':      'positive' if net_gex > 0 else 'negative',
+        'underlying':  underlying,
+        'contracts':   len(contracts)
     })
 
 if __name__ == '__main__':
