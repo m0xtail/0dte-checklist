@@ -16,6 +16,54 @@ def index():
 def health():
     return jsonify({"status": "ok"})
 
+@app.route('/api/debug/<ticker>')
+def debug(ticker):
+    """Raw debug — shows exactly what Massive returns"""
+    ticker = ticker.upper()
+    today  = date.today().isoformat()
+    results = {}
+
+    # Test 1: snapshot with expiration_date
+    try:
+        r1 = requests.get(
+            f'https://api.massive.com/v3/snapshot/options/{ticker}',
+            params={'expiration_date': today, 'limit': 3, 'apiKey': MASSIVE_KEY},
+            timeout=15)
+        results['test1_exact_date'] = {'status': r1.status_code, 'body': r1.json()}
+    except Exception as e:
+        results['test1_exact_date'] = {'error': str(e)}
+
+    # Test 2: snapshot with expiration_date.gte
+    try:
+        r2 = requests.get(
+            f'https://api.massive.com/v3/snapshot/options/{ticker}',
+            params={'expiration_date.gte': today, 'limit': 3, 'apiKey': MASSIVE_KEY},
+            timeout=15)
+        results['test2_gte_date'] = {'status': r2.status_code, 'body': r2.json()}
+    except Exception as e:
+        results['test2_gte_date'] = {'error': str(e)}
+
+    # Test 3: no date filter at all
+    try:
+        r3 = requests.get(
+            f'https://api.massive.com/v3/snapshot/options/{ticker}',
+            params={'limit': 3, 'apiKey': MASSIVE_KEY},
+            timeout=15)
+        results['test3_no_filter'] = {'status': r3.status_code, 'body': r3.json()}
+    except Exception as e:
+        results['test3_no_filter'] = {'error': str(e)}
+
+    # Test 4: underlying price
+    try:
+        r4 = requests.get(
+            f'https://api.massive.com/v2/last/trade/{ticker}',
+            params={'apiKey': MASSIVE_KEY}, timeout=10)
+        results['test4_price'] = {'status': r4.status_code, 'body': r4.json()}
+    except Exception as e:
+        results['test4_price'] = {'error': str(e)}
+
+    return jsonify(results)
+
 @app.route('/api/prices')
 def prices():
     tickers = ['SPY', 'QQQ', '%5EVIX']
@@ -38,19 +86,10 @@ def prices():
             results[ticker.replace('%5E', '^')] = {'error': str(e)}
     return jsonify(results)
 
-def next_weekdays(n=5):
-    """Return the next n weekday dates as ISO strings starting from today"""
-    days = []
-    d = date.today()
-    while len(days) < n:
-        if d.weekday() < 5:  # Mon-Fri
-            days.append(d.isoformat())
-        d += timedelta(days=1)
-    return days
-
 @app.route('/api/gex/<ticker>')
 def gex(ticker):
     ticker = ticker.upper()
+    today  = date.today().isoformat()
 
     # Get underlying price
     underlying = None
@@ -64,37 +103,33 @@ def gex(ticker):
     except:
         pass
 
-    # Try today and next 4 weekdays to find nearest expiration with contracts
+    # Try multiple query strategies to find contracts
     contracts = []
     used_exp  = None
-    for exp in next_weekdays(5):
+
+    strategies = [
+        {'expiration_date': today, 'limit': 250},
+        {'expiration_date.gte': today, 'limit': 250},
+        {'expiration_date.gte': today, 'expiration_date.lte': (date.today() + timedelta(days=7)).isoformat(), 'limit': 250},
+        {'limit': 250},
+    ]
+
+    for params in strategies:
         try:
+            params['apiKey'] = MASSIVE_KEY
             cr = requests.get(
                 f'https://api.massive.com/v3/snapshot/options/{ticker}',
-                params={'expiration_date': exp, 'limit': 250, 'apiKey': MASSIVE_KEY},
-                timeout=15)
+                params=params, timeout=15)
             results = cr.json().get('results', [])
             if results:
                 contracts = results
-                used_exp  = exp
+                used_exp  = params.get('expiration_date') or 'nearest'
                 break
         except:
             continue
 
     if not contracts:
-        # Last resort: fetch without expiration filter to get any available contracts
-        try:
-            cr = requests.get(
-                f'https://api.massive.com/v3/snapshot/options/{ticker}',
-                params={'limit': 250, 'apiKey': MASSIVE_KEY},
-                timeout=15)
-            contracts = cr.json().get('results', [])
-            used_exp  = 'nearest'
-        except Exception as e:
-            return jsonify({'error': f'No contracts found: {str(e)}'}), 404
-
-    if not contracts:
-        return jsonify({'error': 'No options contracts available'}), 404
+        return jsonify({'error': 'No options contracts available from Massive API'}), 404
 
     # Compute GEX per strike
     strike_gex = defaultdict(float)
@@ -116,15 +151,12 @@ def gex(ticker):
             strike_gex[strike] -= gex_val
 
     if not strike_gex:
-        return jsonify({'error': 'No valid greeks in chain — market may be closed'}), 500
+        return jsonify({'error': 'No valid greeks in chain', 'contracts_found': len(contracts)}), 500
 
     sorted_strikes = sorted(strike_gex.keys())
-
-    # Call wall and put wall
     call_wall = max(sorted_strikes, key=lambda s: strike_gex[s])
     put_wall  = min(sorted_strikes, key=lambda s: strike_gex[s])
 
-    # Gamma flip: strike where cumulative GEX is closest to zero crossing
     cumulative = 0
     gamma_flip = None
     best_dist  = float('inf')
@@ -137,15 +169,15 @@ def gex(ticker):
     net_gex = sum(strike_gex.values())
 
     return jsonify({
-        'ticker':      ticker,
-        'expiration':  used_exp,
-        'gamma_flip':  gamma_flip,
-        'call_wall':   call_wall,
-        'put_wall':    put_wall,
-        'net_gex':     net_gex,
-        'regime':      'positive' if net_gex > 0 else 'negative',
-        'underlying':  underlying,
-        'contracts':   len(contracts)
+        'ticker':     ticker,
+        'expiration': used_exp,
+        'gamma_flip': gamma_flip,
+        'call_wall':  call_wall,
+        'put_wall':   put_wall,
+        'net_gex':    net_gex,
+        'regime':     'positive' if net_gex > 0 else 'negative',
+        'underlying': underlying,
+        'contracts':  len(contracts)
     })
 
 if __name__ == '__main__':
